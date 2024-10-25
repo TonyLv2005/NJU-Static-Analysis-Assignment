@@ -25,6 +25,8 @@ package pascal.taie.analysis.dataflow.solver;
 import pascal.taie.analysis.dataflow.analysis.DataflowAnalysis;
 import pascal.taie.analysis.dataflow.fact.DataflowResult;
 import pascal.taie.analysis.graph.cfg.CFG;
+import pascal.taie.ir.exp.Var;
+import pascal.taie.analysis.dataflow.fact.SetFact;
 
 class IterativeSolver<Node, Fact> extends Solver<Node, Fact> {
 
@@ -40,5 +42,27 @@ class IterativeSolver<Node, Fact> extends Solver<Node, Fact> {
     @Override
     protected void doSolveBackward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+
+        boolean change = true;
+        while(change){
+            change = false; //initialize change
+
+            for(Node node : cfg.getNodes()){
+                if(!node.equals(cfg.getExit())){
+                    //get to each node/Exit
+                    result.setOutFact(node, analysis.newInitialFact());
+                    //SetFact<Var> meet_result = new SetFact<>();
+                    //the above line has broke the encapsulation
+                    //we should use the initial fact in each analysis to initialize the fact in result
+                    for(Node succ : cfg.getSuccsOf(node)){
+                        analysis.meetInto(result.getInFact(succ),result.getOutFact(node));
+                    }//meet into each node's succ's infact
+                    //transfer node
+                    if(analysis.transferNode(node, result.getInFact(node), result.getOutFact(node) )){
+                        change = true;
+                    }
+                }
+            }
+        }
     }
 }
