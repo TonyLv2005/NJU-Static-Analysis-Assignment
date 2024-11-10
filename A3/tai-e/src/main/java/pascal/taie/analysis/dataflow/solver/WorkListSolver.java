@@ -26,6 +26,9 @@ import pascal.taie.analysis.dataflow.analysis.DataflowAnalysis;
 import pascal.taie.analysis.dataflow.fact.DataflowResult;
 import pascal.taie.analysis.graph.cfg.CFG;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
 
     WorkListSolver(DataflowAnalysis<Node, Fact> analysis) {
@@ -35,10 +38,66 @@ class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
     @Override
     protected void doSolveForward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+
+        Queue<Node> worklist = new LinkedList<>();
+        //initialize: add all blocks except exit into worklist
+        for (Node node : cfg.getNodes()){
+            // We shouldn't address the Entry and Exit here
+            if(!(cfg.isExit(node) || cfg.isEntry(node))){
+                worklist.add(node);
+            }
+        }
+
+        //start loop
+        while(!worklist.isEmpty()){
+            Node block = worklist.peek();
+            worklist.remove();
+            //Fact temp = result.getOutFact(block);
+            Fact in = result.getInFact(block);
+            Fact out = result.getOutFact(block);
+            //meet into
+            for (Node pre : cfg.getPredsOf(block)){
+                analysis.meetInto(result.getOutFact(pre), in);
+            }
+            if(analysis.transferNode(block,in,out)){
+                for(Node succ : cfg.getSuccsOf(block)){
+                    // We shouldn't address Exit
+                    if(!cfg.isExit(succ)){
+                        worklist.add(succ);
+                    }
+                }
+            }
+        }
     }
 
     @Override
     protected void doSolveBackward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+        Queue<Node>  worklist = new LinkedList<>();
+
+        for(Node node : cfg){
+            if(!(cfg.isExit(node)||cfg.isEntry(node))){
+                worklist.add(node);
+            }
+        }
+
+        while(!worklist.isEmpty()){
+            Node block = worklist.peek();
+            worklist.remove();
+
+            Fact in = result.getInFact(block);
+            Fact out = result.getOutFact(block);
+
+            for(Node succ : cfg.getSuccsOf(block)){
+                analysis.meetInto(result.getInFact(succ),out);
+            }
+            if (analysis.transferNode(block,in,out)){
+                for (Node pre : cfg.getPredsOf(block)){
+                    if(!cfg.isEntry(pre)){
+                        worklist.add(pre);
+                    }
+                }
+            }
+        }
     }
 }
